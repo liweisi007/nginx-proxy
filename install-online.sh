@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO_URL="https://github.com/yourname/nginx-proxy"
+REPO_URL="https://github.com/liweisi007/nginx-proxy"
 
 echo "📦 Installing nginx-proxy..."
 
