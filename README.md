@@ -31,6 +31,14 @@
 ---
 
 ## 🧰 安装
+## 📦 一键安装（curl | bash）
+
+适用于 **全新服务器 / VPS / 云主机**，无需手动 clone。
+
+### 使用命令
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/liweisi007/nginx-proxy/main/install-online.sh | bash
 
 ```bash
 git clone (https://github.com/liweisi007/nginx-proxy)
