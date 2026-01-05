@@ -1,0 +1,133 @@
+#!/bin/bash
+# nginx-proxy 主脚本（生产自用版）
+
+set -e
+
+if [ "$(id -u)" != "0" ]; then
+  echo "请使用 root 用户运行"
+  exit 1
+fi
+
+if command -v apt >/dev/null 2>&1; then
+  PM=apt
+elif command -v yum >/dev/null 2>&1; then
+  PM=yum
+else
+  echo "不支持的系统"
+  exit 1
+fi
+
+install_nginx() {
+  if ! command -v nginx >/dev/null 2>&1; then
+    if [ "$PM" = "apt" ]; then
+      apt update -y
+      apt install -y nginx curl certbot python3-certbot-nginx
+    else
+      yum install -y epel-release
+      yum install -y nginx curl certbot python3-certbot-nginx
+    fi
+  fi
+  if ! pgrep nginx >/dev/null; then
+    nginx
+  fi
+}
+
+add_proxy() {
+
+  read -p "监听端口: " PORT
+  read -p "访问域名(example.com，_ 表示全部): " DOMAIN
+  read -p "反代目标域名(如 127.0.0.1): " TARGET_HOST
+  read -p "反代目标端口(默认自动识别): " TARGET_PORT
+
+  # 自动识别端口与协议
+  if [ -z "$TARGET_PORT" ]; then
+    TARGET_PORT=80
+  fi
+
+  if [ "$TARGET_PORT" = "443" ]; then
+    TARGET_PROTO=https
+  else
+    TARGET_PROTO=http
+  fi
+
+  TARGET="${TARGET_PROTO}://${TARGET_HOST}:${TARGET_PORT}"
+
+  if [[ "$DOMAIN" != "_" && "$DOMAIN" != http* ]]; then
+    DOMAIN_HTTPS="https://${DOMAIN}"
+  else
+    DOMAIN_HTTPS="$DOMAIN"
+  fi
+
+  CONF="/etc/nginx/conf.d/proxy_${PORT}.conf"
+
+  cat > "$CONF" <<EOF
+server {
+    listen $PORT;
+    server_name $DOMAIN;
+
+    location / {
+        proxy_pass $TARGET;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+  nginx -t && nginx -s reload
+
+  echo
+  echo "✅ 反向代理创建成功"
+  echo "🌐 访问地址: $DOMAIN_HTTPS"
+  echo "➡️  反代目标: $TARGET"
+}
+
+EOF
+
+  nginx -t && nginx -s reload
+
+  echo
+  echo "✅ 反向代理创建成功"
+  echo "🌐 访问地址: $DOMAIN_HTTPS"
+  echo "➡️  反代目标: $TARGET"
+}
+
+EOF
+
+  nginx -t && nginx -s reload
+}
+
+remove_proxy() {
+  ls /etc/nginx/conf.d/proxy_*.conf 2>/dev/null || echo "暂无配置"
+  read -p "输入要删除的配置文件名: " CONF
+  rm -f /etc/nginx/conf.d/$CONF
+  nginx -t && nginx -s reload
+}
+
+enable_https() {
+  read -p "请输入域名: " DOMAIN
+  certbot --nginx -d "$DOMAIN"
+}
+
+uninstall_all() {
+  read -p "输入 yes 确认卸载: " C
+  [ "$C" != "yes" ] && exit 0
+  pkill nginx || true
+  rm -f /etc/nginx/conf.d/proxy_*.conf
+  rm -f /usr/local/bin/nginx-go
+  if [ "$PM" = "apt" ]; then
+    apt remove -y nginx nginx-common nginx-core
+    apt autoremove -y
+  else
+    yum remove -y nginx
+  fi
+}
+
+case "$1" in
+  add) install_nginx; add_proxy ;;
+  del) remove_proxy ;;
+  https) enable_https ;;
+  uninstall) uninstall_all ;;
+  *) install_nginx ;;
+esac
