@@ -33,7 +33,7 @@
 ## 🧰 安装
 
 ```bash
-git clone <你的仓库地址>
+git clone (https://github.com/liweisi007/nginx-proxy)
 cd nginx-proxy
 chmod +x install.sh nginx-proxy nginx-go
 ./install.sh
